@@ -110,37 +110,123 @@ body {
 }
 .field__amount--result { color: var(--green); }
 
-.select-wrap { position: relative; flex-shrink: 0; }
-.select-wrap::after {
-  content: "";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  transform: translateY(-65%) rotate(45deg);
-  pointer-events: none;
-}
+/* Searchable combobox */
+.combo { position: relative; flex-shrink: 0; }
 
-.field__select {
-  appearance: none;
-  -webkit-appearance: none;
+.combo__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 116px;
+  max-width: 168px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--card-border);
   border-radius: 10px;
   color: var(--text);
   font-size: 15px;
   font-weight: 600;
-  padding: 12px 36px 12px 14px;
+  padding: 12px 14px;
   cursor: pointer;
   outline: none;
-  max-width: 168px;
+  transition: background 0.18s ease;
 }
-.field__select:hover { background: rgba(255, 255, 255, 0.09); }
-.field__select option { background: #161826; color: var(--text); }
-.field__select optgroup { background: #0d0e18; color: var(--muted); font-weight: 700; }
+.combo__button:hover { background: rgba(255, 255, 255, 0.09); }
+.combo__label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo__caret {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s ease;
+}
+.combo--open .combo__caret { transform: translateY(2px) rotate(225deg); }
+
+.combo__pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  max-width: 78vw;
+  background: #14162400;
+  background: rgba(20, 22, 36, 0.98);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 20;
+  overflow: hidden;
+  padding: 8px;
+}
+.combo__pop[hidden] { display: none; }
+
+.combo__search {
+  width: 100%;
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  margin-bottom: 8px;
+}
+.combo__search:focus {
+  border-color: rgba(124, 92, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.18);
+}
+
+.combo__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.combo__group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  padding: 8px 10px 4px;
+  font-weight: 700;
+}
+.combo__option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.combo__option:hover,
+.combo__option.is-active { background: rgba(124, 92, 255, 0.22); }
+.combo__option.is-selected { background: rgba(255, 179, 0, 0.16); }
+.combo__option .sym { font-weight: 700; flex-shrink: 0; }
+.combo__option .nm {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo__empty { padding: 14px 10px; color: var(--muted); font-size: 13.5px; text-align: center; }
+
+/* Slim scrollbar for the list */
+.combo__list::-webkit-scrollbar { width: 8px; }
+.combo__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
 
 /* Swap button */
 .swap {
@@ -208,5 +294,5 @@ body {
 
 @media (max-width: 420px) {
   .field__amount { font-size: 20px; }
-  .field__select { max-width: 130px; font-size: 14px; }
+  .combo__button { min-width: 104px; max-width: 132px; font-size: 14px; }
 }
