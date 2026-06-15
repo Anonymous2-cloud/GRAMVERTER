@@ -31,8 +31,15 @@
             value="0.024"
             aria-label="Amount to convert"
           />
-          <div class="select-wrap">
-            <select id="from" class="field__select" aria-label="Convert from"></select>
+          <div class="combo" id="combo-from">
+            <button type="button" class="combo__button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="combo__label">…</span>
+              <span class="combo__caret" aria-hidden="true"></span>
+            </button>
+            <div class="combo__pop" hidden>
+              <input type="text" class="combo__search" placeholder="Search token…" autocomplete="off" aria-label="Search token" />
+              <ul class="combo__list" role="listbox" tabindex="-1"></ul>
+            </div>
           </div>
         </div>
       </div>
@@ -56,8 +63,15 @@
             value="—"
             aria-label="Converted amount"
           />
-          <div class="select-wrap">
-            <select id="to" class="field__select" aria-label="Convert to"></select>
+          <div class="combo" id="combo-to">
+            <button type="button" class="combo__button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="combo__label">…</span>
+              <span class="combo__caret" aria-hidden="true"></span>
+            </button>
+            <div class="combo__pop" hidden>
+              <input type="text" class="combo__search" placeholder="Search token…" autocomplete="off" aria-label="Search token" />
+              <ul class="combo__list" role="listbox" tabindex="-1"></ul>
+            </div>
           </div>
         </div>
       </div>

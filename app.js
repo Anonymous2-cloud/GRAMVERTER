@@ -73,8 +73,6 @@ const state = {
 const el = {
   amount: document.getElementById("amount"),
   result: document.getElementById("result"),
-  from: document.getElementById("from"),
-  to: document.getElementById("to"),
   swap: document.getElementById("swap"),
   rate: document.getElementById("rate"),
   updated: document.getElementById("updated"),
@@ -174,36 +172,199 @@ function coinUsd(coins, id) {
 }
 
 /* --------------------------------------------------------------------------
- * UI population
+ * Searchable combobox component
+ *
+ * A custom dropdown (button + searchable, grouped, keyboard-navigable list)
+ * that replaces the native <select>. Exposes a `.value` get/set + `onChange`
+ * callback so the rest of the app stays decoupled from the widget internals.
  * ------------------------------------------------------------------------ */
-function buildOptions() {
-  const cryptoGroup = document.createElement("optgroup");
-  cryptoGroup.label = "Cryptocurrency";
+class Combobox {
+  constructor(root, onChange) {
+    this.root = root;
+    this.onChange = onChange;
+    this.button = root.querySelector(".combo__button");
+    this.labelEl = root.querySelector(".combo__label");
+    this.pop = root.querySelector(".combo__pop");
+    this.search = root.querySelector(".combo__search");
+    this.list = root.querySelector(".combo__list");
+    this.items = []; // [{ id, group, sym, name, search }]
+    this.filtered = [];
+    this.activeIndex = -1;
+    this._value = null;
+    this._wire();
+  }
+
+  setItems(items) {
+    this.items = items;
+    if (this.isOpen) this._renderList(this.search.value);
+  }
+
+  get value() {
+    return this._value;
+  }
+  set value(id) {
+    this._value = id;
+    const it = this.items.find((i) => i.id === id);
+    this.labelEl.textContent = it ? it.sym : "Select";
+  }
+
+  get isOpen() {
+    return !this.pop.hidden;
+  }
+
+  open() {
+    if (this.isOpen) return;
+    this.pop.hidden = false;
+    this.root.classList.add("combo--open");
+    this.button.setAttribute("aria-expanded", "true");
+    this.search.value = "";
+    this._renderList("");
+    this.search.focus();
+  }
+
+  close() {
+    if (!this.isOpen) return;
+    this.pop.hidden = true;
+    this.root.classList.remove("combo--open");
+    this.button.setAttribute("aria-expanded", "false");
+    this.activeIndex = -1;
+  }
+
+  toggle() {
+    this.isOpen ? this.close() : this.open();
+  }
+
+  select(id) {
+    this.value = id;
+    this.close();
+    this.button.focus();
+    this.onChange();
+  }
+
+  _renderList(query) {
+    const q = query.trim().toLowerCase();
+    this.filtered = q
+      ? this.items.filter((i) => i.search.includes(q))
+      : this.items.slice();
+
+    this.list.innerHTML = "";
+    if (this.filtered.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "combo__empty";
+      empty.textContent = "No tokens found";
+      this.list.appendChild(empty);
+      this.activeIndex = -1;
+      return;
+    }
+
+    let lastGroup = null;
+    this.filtered.forEach((it, idx) => {
+      if (it.group !== lastGroup) {
+        lastGroup = it.group;
+        const h = document.createElement("li");
+        h.className = "combo__group";
+        h.textContent = it.group;
+        this.list.appendChild(h);
+      }
+      const li = document.createElement("li");
+      li.className = "combo__option";
+      li.setAttribute("role", "option");
+      li.dataset.index = String(idx);
+      if (it.id === this._value) li.classList.add("is-selected");
+      li.innerHTML = `<span class="sym">${it.sym}</span><span class="nm">${it.name}</span>`;
+      li.addEventListener("mousedown", (e) => {
+        e.preventDefault(); // keep focus; fire before blur closes the pop
+        this.select(it.id);
+      });
+      this.list.appendChild(li);
+    });
+
+    // Highlight the first real result for quick Enter-to-select.
+    this.activeIndex = 0;
+    this._paintActive();
+  }
+
+  _optionEls() {
+    return Array.from(this.list.querySelectorAll(".combo__option"));
+  }
+
+  _paintActive() {
+    const opts = this._optionEls();
+    opts.forEach((o) => o.classList.remove("is-active"));
+    const active = opts[this.activeIndex];
+    if (active) active.scrollIntoView({ block: "nearest" });
+    if (active) active.classList.add("is-active");
+  }
+
+  _move(delta) {
+    const opts = this._optionEls();
+    if (!opts.length) return;
+    this.activeIndex = (this.activeIndex + delta + opts.length) % opts.length;
+    this._paintActive();
+  }
+
+  _commitActive() {
+    const active = this._optionEls()[this.activeIndex];
+    if (!active) return;
+    const it = this.filtered[Number(active.dataset.index)];
+    if (it) this.select(it.id);
+  }
+
+  _wire() {
+    this.button.addEventListener("click", () => this.toggle());
+
+    this.search.addEventListener("input", () => this._renderList(this.search.value));
+
+    this.search.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowDown": e.preventDefault(); this._move(1); break;
+        case "ArrowUp": e.preventDefault(); this._move(-1); break;
+        case "Enter": e.preventDefault(); this._commitActive(); break;
+        case "Escape": e.preventDefault(); this.close(); this.button.focus(); break;
+      }
+    });
+
+    // Close when focus/click leaves the whole component.
+    document.addEventListener("click", (e) => {
+      if (!this.root.contains(e.target)) this.close();
+    });
+  }
+}
+
+// Build the unified, grouped item list (cryptos first, then fiats).
+function buildComboItems() {
+  const items = [];
   for (const c of state.cryptos) {
-    const o = document.createElement("option");
-    o.value = c.id;
-    o.textContent = `${c.symbol} — ${c.name}`;
-    cryptoGroup.appendChild(o);
+    items.push({
+      id: c.id,
+      group: "Cryptocurrency",
+      sym: c.symbol,
+      name: c.name,
+      search: `${c.symbol} ${c.name} ${c.id}`.toLowerCase(),
+    });
   }
-
-  const fiatGroup = document.createElement("optgroup");
-  fiatGroup.label = "Fiat currency";
   for (const f of FIATS) {
-    const o = document.createElement("option");
-    o.value = `fiat:${f.code}`;
-    o.textContent = `${f.code.toUpperCase()} — ${f.name}`;
-    fiatGroup.appendChild(o);
+    items.push({
+      id: `fiat:${f.code}`,
+      group: "Fiat currency",
+      sym: f.code.toUpperCase(),
+      name: f.name,
+      search: `${f.code} ${f.name}`.toLowerCase(),
+    });
   }
+  return items;
+}
 
-  for (const sel of [el.from, el.to]) {
-    sel.innerHTML = "";
-    sel.appendChild(cryptoGroup.cloneNode(true));
-    sel.appendChild(fiatGroup.cloneNode(true));
-  }
+const comboFrom = new Combobox(document.getElementById("combo-from"), () => render());
+const comboTo = new Combobox(document.getElementById("combo-to"), () => render());
 
+function buildOptions() {
+  const items = buildComboItems();
+  comboFrom.setItems(items);
+  comboTo.setItems(items);
   // Sensible defaults: BTC → USD.
-  el.from.value = "bitcoin";
-  el.to.value = "fiat:usd";
+  comboFrom.value = "bitcoin";
+  comboTo.value = "fiat:usd";
 }
 
 /* --------------------------------------------------------------------------
@@ -259,8 +420,8 @@ function render() {
   if (!state.loaded) return;
 
   const amount = parseAmount(el.amount.value);
-  const fromId = el.from.value;
-  const toId = el.to.value;
+  const fromId = comboFrom.value;
+  const toId = comboTo.value;
   const from = state.assets.get(fromId);
   const to = state.assets.get(toId);
 
@@ -334,13 +495,11 @@ async function refresh(isInitial = false) {
  * Events
  * ------------------------------------------------------------------------ */
 el.amount.addEventListener("input", render);
-el.from.addEventListener("change", render);
-el.to.addEventListener("change", render);
 
 el.swap.addEventListener("click", () => {
-  const f = el.from.value;
-  el.from.value = el.to.value;
-  el.to.value = f;
+  const f = comboFrom.value;
+  comboFrom.value = comboTo.value;
+  comboTo.value = f;
   render();
 });
 
