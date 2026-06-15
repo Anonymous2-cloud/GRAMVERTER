@@ -292,6 +292,26 @@ body {
 .credit a { color: var(--accent); text-decoration: none; }
 .credit a:hover { text-decoration: underline; }
 
+.built-by { text-align: center; margin-top: 8px; }
+.built-by a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.built-by a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 420px) {
   .field__amount { font-size: 20px; }
   .combo__button { min-width: 104px; max-width: 132px; font-size: 14px; }
