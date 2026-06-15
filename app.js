@@ -14,6 +14,18 @@
 
 const API = "https://api.coingecko.com/api/v3";
 
+// Optional free CoinGecko Demo API key (set in config.js). When present it is
+// sent as the `x-cg-demo-api-key` header, moving us off the heavily-throttled
+// shared public pool onto a stable ~30 calls/min limit.
+const DEMO_KEY =
+  (typeof window !== "undefined" &&
+    window.GRAMVERTER_CONFIG &&
+    window.GRAMVERTER_CONFIG.coingeckoDemoKey) ||
+  "";
+
+// Network retry policy for transient failures (429 rate-limit, 5xx, dropouts).
+const MAX_RETRIES = 3;
+
 // Curated list of fiat currencies (CoinGecko vs_currencies), Naira included.
 const FIATS = [
   { code: "usd", name: "US Dollar", symbol: "$" },
@@ -40,8 +52,9 @@ const FIATS = [
 // How many top coins (by market cap) to load for the crypto dropdown.
 const TOP_COINS = 100;
 
-// Auto-refresh interval for live prices.
-const REFRESH_MS = 60_000;
+// Auto-refresh interval for live prices. Kept conservative to stay well under
+// the rate limit even with multiple open tabs.
+const REFRESH_MS = 90_000;
 
 /* --------------------------------------------------------------------------
  * State
@@ -51,6 +64,7 @@ const state = {
   assets: new Map(),
   cryptos: [],
   loaded: false,
+  lastUpdated: null, // Date of the last successful price load
 };
 
 /* --------------------------------------------------------------------------
@@ -70,10 +84,36 @@ const el = {
 /* --------------------------------------------------------------------------
  * Data fetching
  * ------------------------------------------------------------------------ */
-async function fetchJSON(url) {
-  const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return res.json();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Errors worth retrying (rate limits, server hiccups, network drops).
+class RetryableError extends Error {}
+
+function apiHeaders() {
+  const headers = { accept: "application/json" };
+  if (DEMO_KEY) headers["x-cg-demo-api-key"] = DEMO_KEY;
+  return headers;
+}
+
+// Fetch JSON with exponential backoff on transient failures. A 429 (rate
+// limit) or 5xx is retried after 1s, 2s, 4s before finally giving up.
+async function fetchJSON(url, attempt = 0) {
+  try {
+    const res = await fetch(url, { headers: apiHeaders() });
+    if (res.status === 429 || res.status >= 500) {
+      throw new RetryableError(`Temporary error (${res.status})`);
+    }
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    return await res.json();
+  } catch (err) {
+    // TypeError from fetch === network failure (also retryable).
+    const retryable = err instanceof RetryableError || err instanceof TypeError;
+    if (retryable && attempt < MAX_RETRIES) {
+      await sleep(Math.min(1000 * 2 ** attempt, 8000));
+      return fetchJSON(url, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 // Load top cryptos (with USD prices) + derive fiat USD values from BTC pricing.
@@ -108,7 +148,7 @@ async function loadMarketData() {
 
   // --- Fiats: BTC costs `btcInUsd` USD and `btcInFiat` of the fiat, so
   //     1 fiat = btcInUsd / btcInFiat USD. ---
-  const btcInUsd = state.assets.get("bitcoin")?.usdValue || coinUsd(coins, "bitcoin");
+  const btcInUsd = coinUsd(coins, "bitcoin");
   for (const f of FIATS) {
     const btcInFiat = btc?.bitcoin?.[f.code];
     if (!btcInFiat) continue;
@@ -242,13 +282,14 @@ function render() {
     `<strong>${formatValue(unit, to)} ${assetLabel(to)}</strong>`;
 }
 
-function setUpdatedNow() {
-  const t = new Date().toLocaleTimeString("en-US", {
+function setUpdated(date, stale) {
+  const t = date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
-  el.updated.textContent = `Updated ${t}`;
+  el.updated.textContent = stale ? `Delayed · last good ${t}` : `Updated ${t}`;
+  el.updated.classList.toggle("status__updated--stale", !!stale);
 }
 
 /* --------------------------------------------------------------------------
@@ -266,14 +307,22 @@ async function refresh(isInitial = false) {
     if (isInitial) {
       buildOptions();
     }
+    state.lastUpdated = new Date();
     render();
-    setUpdatedNow();
+    setUpdated(state.lastUpdated, false);
   } catch (err) {
     console.error(err);
-    el.rate.classList.add("error");
-    el.rate.textContent =
-      "Couldn't reach live prices. Check your connection and tap Refresh.";
-    if (isInitial) el.updated.textContent = "Offline";
+    if (state.loaded && state.lastUpdated) {
+      // We already have prices — keep showing them rather than blanking out.
+      render();
+      setUpdated(state.lastUpdated, true);
+    } else {
+      // First load never succeeded; nothing to show yet.
+      el.rate.classList.add("error");
+      el.rate.textContent =
+        "Couldn't reach live prices (rate-limited or offline). Retrying…";
+      el.updated.textContent = "Offline";
+    }
   } finally {
     refreshing = false;
     // Let the spin finish a full rotation before stopping.

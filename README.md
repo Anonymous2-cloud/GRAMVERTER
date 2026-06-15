@@ -14,7 +14,7 @@ cryptocurrencies and fiat currencies using live market data.
 - **Top 100 cryptocurrencies** + 19 fiat currencies including the
   **Nigerian Naira (₦)**, USD, EUR, GBP, and more.
 - **Live unit rate** display (`1 BTC = $65,000`), instant conversion as you
-  type, one-tap **swap**, and **auto-refresh** every 60 seconds.
+  type, one-tap **swap**, and **auto-refresh** every 90 seconds.
 - **Zero dependencies / no build step** — just plain HTML, CSS, and JavaScript.
 
 ## How it works
@@ -31,6 +31,24 @@ amountTo = amountFrom × (usdValue[from] / usdValue[to])
   both USD and each fiat, we back out each fiat's USD value.
 
 This keeps all four conversion directions working from the same code path.
+
+## Rate limits & resilience
+
+The app uses CoinGecko's API. The **no-key public pool is throttled to ~5–15
+calls/min** and shared, so it can intermittently return `429 Too Many Requests`.
+GRAMVERTER handles this gracefully:
+
+- **Optional Demo API key** — paste a free CoinGecko Demo key into `config.js`
+  to get a stable ~30 calls/min (10,000/month). Get one at the
+  [CoinGecko developer dashboard](https://www.coingecko.com/en/developers/dashboard).
+- **Retry with backoff** — transient `429`/`5xx`/network errors are retried
+  automatically (1s → 2s → 4s).
+- **Stale-on-error** — if a refresh fails, the last good prices stay on screen
+  with a "Delayed" indicator instead of going blank.
+- Auto-refresh runs every 90 seconds (just 2 calls per cycle).
+
+> The Demo key in `config.js` is shipped to the browser and therefore public —
+> that's expected for a Demo key. Never put a paid/Pro key in front-end code.
 
 ## Run locally
 
