@@ -12,5 +12,5 @@
  * Pro key here.
  * ========================================================================= */
 window.GRAMVERTER_CONFIG = {
-  coingeckoDemoKey: "", // e.g. "CG-xxxxxxxxxxxxxxxxxxxxxxxx"
+  coingeckoDemoKey: "CG-xzSieJULQYbPhaovUvwJU9gK",
 };
