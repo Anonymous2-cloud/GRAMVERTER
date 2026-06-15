@@ -39,13 +39,13 @@ body {
   z-index: 0;
   pointer-events: none;
 }
-.orb-1 { width: 380px; height: 380px; background: var(--accent-2); top: -140px; left: -120px; }
+.orb-1 { width: 340px; height: 340px; background: var(--accent-2); top: -180px; left: -130px; opacity: 0.22; }
 .orb-2 { width: 280px; height: 280px; background: var(--accent); bottom: -200px; right: -130px; opacity: 0.15; }
 
 /* On phone-sized screens keep the orbs small so they don't flood the edges
-   (which also stops mobile browsers tinting their toolbars amber). */
+   (which also stops mobile browsers tinting their toolbars). */
 @media (max-width: 600px) {
-  .orb-1 { width: 240px; height: 240px; top: -110px; left: -90px; }
+  .orb-1 { width: 220px; height: 220px; top: -150px; left: -90px; opacity: 0.16; }
   .orb-2 { width: 190px; height: 190px; bottom: -170px; right: -90px; opacity: 0.1; }
 }
 
