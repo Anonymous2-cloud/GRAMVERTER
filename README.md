@@ -11,10 +11,10 @@ cryptocurrencies and fiat currencies using live market data.
   and fiat→fiat, all from one interface.
 - **Real-time prices** from the [CoinGecko](https://www.coingecko.com) public
   API (no API key required).
-- **Top 100 cryptocurrencies** + 19 fiat currencies including the
-  **Nigerian Naira (₦)**, USD, EUR, GBP, and more.
+- **Top 250 cryptocurrencies** (plus hand-picked extras like SEI) + 19 fiat
+  currencies including the **Nigerian Naira (₦)**, USD, EUR, GBP, and more.
 - **Live unit rate** display (`1 BTC = $65,000`), instant conversion as you
-  type, one-tap **swap**, and **auto-refresh** every 90 seconds.
+  type, one-tap **swap**, and **auto-refresh** every 2 minutes.
 - **Zero dependencies / no build step** — just plain HTML, CSS, and JavaScript.
 
 ## How it works
@@ -45,7 +45,7 @@ GRAMVERTER handles this gracefully:
   automatically (1s → 2s → 4s).
 - **Stale-on-error** — if a refresh fails, the last good prices stay on screen
   with a "Delayed" indicator instead of going blank.
-- Auto-refresh runs every 90 seconds (just 2 calls per cycle).
+- Auto-refresh runs every 2 minutes (a small handful of calls per cycle).
 
 > The Demo key in `config.js` is shipped to the browser and therefore public —
 > that's expected for a Demo key. Never put a paid/Pro key in front-end code.
