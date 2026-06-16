@@ -118,8 +118,9 @@ async function fetchJSON(url, attempt = 0) {
   }
 }
 
-// Load top cryptos (with USD prices) + derive fiat USD values from BTC pricing.
-async function loadMarketData() {
+// Fetch prices directly from CoinGecko (fallback for local preview or if the
+// cached /api/prices endpoint is unavailable). Uses the client Demo key, if set.
+async function fetchPricesDirect() {
   const fiatCodes = FIATS.map((f) => f.code).join(",");
 
   const requests = [
@@ -130,7 +131,7 @@ async function loadMarketData() {
     // BTC priced in every fiat lets us back out each fiat's USD value.
     fetchJSON(`${API}/simple/price?ids=bitcoin&vs_currencies=${fiatCodes}`),
   ];
-  // Pull in any extra coins that sit outside the top 100 (e.g. SEI).
+  // Pull in any extra coins that sit outside the top list (e.g. SEI).
   if (EXTRA_COINS.length) {
     requests.push(
       fetchJSON(
@@ -140,10 +141,27 @@ async function loadMarketData() {
   }
 
   const [topCoins, btc, extraCoins = []] = await Promise.all(requests);
-
-  // Merge top coins with extras, de-duped by id (top-100 order preserved).
   const seen = new Set(topCoins.map((c) => c.id));
   const coins = topCoins.concat(extraCoins.filter((c) => !seen.has(c.id)));
+  return { coins, btc };
+}
+
+// Prefer the shared, Edge-cached server endpoint (keeps CoinGecko usage flat
+// across all visitors and keeps the API key server-side). Fall back to calling
+// CoinGecko directly if it's not reachable.
+async function fetchPrices() {
+  try {
+    const data = await fetchJSON("/api/prices");
+    if (data && Array.isArray(data.coins) && data.btc) return data;
+  } catch (err) {
+    console.warn("Cached price API unavailable, falling back to CoinGecko", err);
+  }
+  return fetchPricesDirect();
+}
+
+// Load cryptos (with USD prices) + derive fiat USD values from BTC pricing.
+async function loadMarketData() {
+  const { coins, btc } = await fetchPrices();
 
   const assets = new Map();
   const cryptos = [];
