@@ -50,14 +50,15 @@ const FIATS = [
 ];
 
 // How many top coins (by market cap) to load for the crypto dropdown.
-const TOP_COINS = 100;
+// 250 is CoinGecko's max per page, so this stays a single request.
+const TOP_COINS = 250;
 
-// Extra coins (CoinGecko ids) to always include even if outside the top 100.
+// Extra coins (CoinGecko ids) to always include even if outside the top list.
 const EXTRA_COINS = ["sei-network"];
 
-// Auto-refresh interval for live prices. Kept conservative to stay well under
-// the rate limit even with multiple open tabs.
-const REFRESH_MS = 90_000;
+// Auto-refresh interval for live prices. Kept relaxed to stay well under the
+// rate limit and avoid unnecessary data pulling.
+const REFRESH_MS = 120_000;
 
 /* --------------------------------------------------------------------------
  * State
