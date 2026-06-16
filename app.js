@@ -52,6 +52,9 @@ const FIATS = [
 // How many top coins (by market cap) to load for the crypto dropdown.
 const TOP_COINS = 100;
 
+// Extra coins (CoinGecko ids) to always include even if outside the top 100.
+const EXTRA_COINS = ["sei-network"];
+
 // Auto-refresh interval for live prices. Kept conservative to stay well under
 // the rate limit even with multiple open tabs.
 const REFRESH_MS = 90_000;
@@ -118,14 +121,28 @@ async function fetchJSON(url, attempt = 0) {
 async function loadMarketData() {
   const fiatCodes = FIATS.map((f) => f.code).join(",");
 
-  const [coins, btc] = await Promise.all([
+  const requests = [
     fetchJSON(
       `${API}/coins/markets?vs_currency=usd&order=market_cap_desc` +
         `&per_page=${TOP_COINS}&page=1&sparkline=false`
     ),
     // BTC priced in every fiat lets us back out each fiat's USD value.
     fetchJSON(`${API}/simple/price?ids=bitcoin&vs_currencies=${fiatCodes}`),
-  ]);
+  ];
+  // Pull in any extra coins that sit outside the top 100 (e.g. SEI).
+  if (EXTRA_COINS.length) {
+    requests.push(
+      fetchJSON(
+        `${API}/coins/markets?vs_currency=usd&ids=${EXTRA_COINS.join(",")}&sparkline=false`
+      )
+    );
+  }
+
+  const [topCoins, btc, extraCoins = []] = await Promise.all(requests);
+
+  // Merge top coins with extras, de-duped by id (top-100 order preserved).
+  const seen = new Set(topCoins.map((c) => c.id));
+  const coins = topCoins.concat(extraCoins.filter((c) => !seen.has(c.id)));
 
   const assets = new Map();
   const cryptos = [];
