@@ -32,6 +32,20 @@ amountTo = amountFrom × (usdValue[from] / usdValue[to])
 
 This keeps all four conversion directions working from the same code path.
 
+## Cached price API (flat usage at any scale)
+
+To keep CoinGecko usage flat regardless of traffic, prices are served by a
+small Vercel serverless function at **`/api/prices`** (`api/prices.js`) that
+proxies CoinGecko and is cached on Vercel's Edge Network
+(`s-maxage=120, stale-while-revalidate=600`). Every visitor is served from that
+shared cache, so CoinGecko is hit at most ~once per cache window no matter how
+many people are using the app. The browser only ever calls `/api/prices`
+(falling back to CoinGecko directly only if that endpoint is unreachable).
+
+**Setup:** add your CoinGecko Demo key as a Vercel environment variable named
+`COINGECKO_DEMO_KEY` (Project → Settings → Environment Variables), then redeploy.
+With this in place the key lives server-side and never ships to the browser.
+
 ## Rate limits & resilience
 
 The app uses CoinGecko's API. The **no-key public pool is throttled to ~5–15
